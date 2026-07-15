@@ -1,0 +1,8 @@
+# conteúdo proprietário do original (não redistribuir)
+_ref_*.js
+_keys.txt
+img/
+
+# temporários
+*.log
+.DS_Store

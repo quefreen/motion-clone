@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motion Clone — POC v2</title>
+<style>
+  :root{
+    --bg:#0b0c0e; --panel:#141619; --panel2:#1b1e22; --line:#26292e;
+    --txt:#e7e9ec; --dim:#8a9099; --accent:#ffb020; --accent2:#5b8dff; --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+    font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden}
+  .app{display:grid;grid-template-columns:230px 1fr 270px;height:100vh}
+  .sidebar{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px 0}
+  .brand{padding:4px 16px 14px;font-weight:700;letter-spacing:.5px;font-size:15px}
+  .brand small{color:var(--dim);font-weight:400;font-size:11px;display:block;margin-top:2px}
+  .group{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.8px;padding:12px 16px 4px}
+  .tpl{padding:7px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;border-left:2px solid transparent}
+  .tpl:hover{background:var(--panel2)}
+  .tpl.active{background:var(--panel2);border-left-color:var(--accent);color:#fff}
+  .tpl .dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);flex:0 0 auto}
+  .tpl.soon{opacity:.4;cursor:not-allowed}
+  .tpl.soon .dot{background:var(--dim)}
+  .center{display:flex;flex-direction:column;min-width:0}
+  .stagewrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden}
+  .stage{width:100%;height:100%;max-width:900px;position:relative;perspective:1400px;
+    overflow:hidden;border-radius:var(--radius);
+    background:radial-gradient(120% 120% at 50% 30%,#15181c,#0b0c0e)}
+  .plane{position:absolute;left:50%;top:50%;will-change:transform;background-size:cover;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);backface-visibility:hidden;display:flex;
+    align-items:center;justify-content:center;font-weight:700;font-size:20px;
+    color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .stagelabel{position:absolute;top:12px;left:16px;color:var(--dim);font-size:11px;letter-spacing:.5px}
+  .fps{position:absolute;top:12px;right:16px;color:var(--dim);font-size:11px}
+  .timeline{background:var(--panel);border-top:1px solid var(--line);padding:10px 16px 14px;
+    display:flex;flex-direction:column;gap:8px}
+  .transport{display:flex;align-items:center;gap:10px}
+  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:7px;
+    padding:6px 12px;cursor:pointer;font-size:12px}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+  .time{color:var(--dim);font-variant-numeric:tabular-nums;font-size:11px;min-width:96px}
+  .track{position:relative;height:26px;background:var(--panel2);border-radius:6px;cursor:pointer;overflow:hidden}
+  .track .fill{position:absolute;top:0;left:0;bottom:0;background:rgba(255,176,32,.14);border-right:2px solid var(--accent)}
+  .track .ticks{position:absolute;inset:0;display:flex}
+  .track .ticks i{flex:1;border-right:1px solid var(--line)}
+  .track .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent)}
+  .params{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:14px 14px 40px}
+  .params h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);margin:16px 0 8px}
+  .params h3:first-child{margin-top:0}
+  .row{margin-bottom:12px}
+  .row label{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-bottom:4px}
+  .row label b{color:var(--txt);font-weight:600;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent);height:4px}
+  select{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:6px;padding:5px 8px;font-size:12px}
+  .reset{margin-top:8px;width:100%}
+  .hint{color:var(--dim);font-size:10px;margin-top:20px;line-height:1.5}
+  .easebox{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  canvas.ease{width:56px;height:56px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;flex:0 0 auto}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">Motion Clone <small>POC v2 · bezier + stepped · 100% local</small></div>
+  </aside>
+  <section class="center">
+    <div class="stagewrap">
+      <div class="stage" id="stage">
+        <div class="stagelabel" id="stagelabel"></div>
+        <div class="fps" id="fps"></div>
+      </div>
+    </div>
+    <div class="timeline">
+      <div class="transport">
+        <button class="btn primary" id="playBtn">▶ Play</button>
+        <button class="btn" id="loopBtn">⟳ Loop: on</button>
+        <span class="time" id="timeLabel">0.00s / 0.00s</span>
+      </div>
+      <div class="track" id="track">
+        <div class="ticks" id="ticks"></div>
+        <div class="fill" id="fill"></div>
+        <div class="playhead" id="playhead"></div>
+      </div>
+    </div>
+  </section>
+  <aside class="params" id="paramPanel"></aside>
+</div>
+
+<script>
+/* =====================================================================
+   MOTION ENGINE — reconstruído do modelo do produto (não copia código):
+   • cubic-bezier easing (Newton-Raphson, igual ao evaluator do produto)
+   • curvas nomeadas + curva default por preset (tabela real g_)
+   • progresso STEPPED por ciclo (avança 1 slot/ciclo com easing = "assenta")
+   • stagger + anticipation (deslocamento antes de cair, overlap dos cards)
+   ===================================================================== */
+
+/* ---- cubic-bezier: p0=0,p3=1, control pts c=[x1,y1,x2,y2] ---- */
+function bezier(x,c){
+  const x1=c[0],y1=c[1],x2=c[2],y2=c[3];
+  if(x<=0)return 0; if(x>=1)return 1;
+  let h=x;
+  for(let k=0;k<12;k++){
+    const s=3*(1-h)*(1-h)*h*x1 + 3*(1-h)*h*h*x2 + h*h*h;
+    const d=3*(1-h)*(1-h)*x1 + 6*(1-h)*h*(x2-x1) + 3*h*h*(1-x2);
+    if(Math.abs(d)<1e-7)break;
+    h=Math.max(0,Math.min(1,h-(s-x)/d));
+  }
+  return 3*(1-h)*(1-h)*h*y1 + 3*(1-h)*h*h*y2 + h*h*h;
+}
+/* named curves (subset do easingPresets do produto) */
+const CURVES={
+  Flow:[.86,.14,.14,.86], Sweep:[.7,.101,.3,.899], Settle:[.8,.27,.2,.75],
+  Glide:[.33,0,0,1], Snap:[1,0,0,1], Smooth:[.76,0,.24,1], Ease:[.87,0,.13,1],
+  Linear:[.25,.25,.75,.75], "Expo Out":[.19,1,.22,1], "Quart Out":[.165,.84,.44,1],
+  "Back Out":[.34,1.56,.64,1], "Cubic In Out":[.645,.045,.355,1],
+};
+/* helpers do planner */
+const TAU=Math.PI*2;
+const frac=x=>x-Math.floor(x);
+const wave=x=>Math.sin(Math.PI*frac(x));            // 0→1→0
+const smooth=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);};
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+/* =====================================================================
+   REGISTRY — schema real + curva bezier default por preset (tabela g_)
+   ===================================================================== */
+const REGISTRY = {
+  _s_stack:{label:"Stack",separator:true},
+  stack01:{label:"Stack 01",scene:"stack",curve:[.76,0,.24,1],curveName:"Smooth",
+    sections:[
+      {title:"Scene",params:{count:[2,20,6,1],planeSize:[10,200,200,1],cornerRadius:[0,80,0,1],
+        visible:[2,8,3,1],perspective:[0,1000,0,1],zoom:[50,300,100,1],
+        offsetX:[-100,100,0,.5],offsetY:[-100,100,0,.5]}},
+      {title:"Animation",params:{cycles:[1,8,1,1],duration:[.5,10,8,.05],
+        stagger:[0,.5,.14,.01],delay:[0,5,0,.05]}}],
+    toggles:{direction:{options:["down","up"],def:"down"}}},
+
+  _s_carousel:{label:"Carousel",separator:true},
+  carousel01:{label:"Carousel 01",scene:"slide",curve:[.33,0,0,1],curveName:"Glide",
+    sections:[
+      {title:"Scene",params:{count:[2,20,5,1],planeSize:[50,600,210,1],cornerRadius:[0,80,12,1],
+        gap:[0,400,44,1],offsetX:[-100,100,0,.5],offsetY:[-100,100,0,.5]}},
+      {title:"Animation",params:{cycles:[1,8,1,1],duration:[1,20,5.4,.1],delay:[0,2,0,.05]}}],
+    toggles:{direction:{options:["left","right","up","down"],def:"left"},
+      scaleCenter:{options:["off","on"],def:"on"},
+      tiltStyle:{options:["off","fan","uniform","alternate"],def:"fan"}}},
+
+  _s_wheel:{label:"Wheel",separator:true},
+  wheel01:{label:"Wheel 01",scene:"wheel",curve:[.86,.14,.14,.86],curveName:"Flow",
+    sections:[
+      {title:"Scene",params:{count:[3,20,10,1],ringRadius:[120,500,300,1],thumbSize:[40,220,110,1],
+        cornerRadius:[0,50,8,1],offsetX:[-100,100,0,.5],offsetY:[-100,100,0,.5]}},
+      {title:"Animation",params:{cycles:[1,8,1,1],duration:[2,60,10,.1],
+        cycleDeg:[30,720,360,1],delay:[0,2,0,.05]}}],
+    toggles:{direction:{options:["forward","reverse"],def:"forward"},
+      spinThumbs:{options:["on","off"],def:"on"},
+      bigImage:{options:["on","off"],def:"on"}}},
+};
+const COMING=["Orbit","3D","Field","Wipe","Spin","Grid","Globe","Spiral",
+  "Magazine","Gravity","Parallax","Deck","Flip","Marquee","Scale","Proximity"];
+
+/* imagens reais do original (baixadas local em img/) */
+const IMAGES=["img/sample01.png","img/sample02.png","img/sample03.png","img/sample04.png",
+  "img/sample05.png","img/sample06.png","img/sample07.png","img/sample08.png",
+  "img/sample09.png","img/sample10.png"];
+function planeStyle(el,i,n,corner){
+  const hue=(i*360/n)|0;
+  el.style.backgroundColor=`hsl(${hue} 40% 40%)`;               // fallback enquanto carrega
+  el.style.backgroundImage=`url("${IMAGES[i%IMAGES.length]}")`;
+  el.style.borderRadius=corner+"px";
+  el.textContent="";
+}
+
+/* =====================================================================
+   SCENES — cada uma usa progresso eased (bezier) + stepped + stagger
+   tRaw = tempo global normalizado (0..1 no loop)
+   ===================================================================== */
+
+/* STACK: 'visible' = quantos na pilha; 'count' = pool que CICLA.
+   STAGGER individual (planner usa `mod(t+u*stagger,1)`): cada card seguidor
+   se move num tempo diferente — o da frente sai rápido, e os de trás entram
+   no lugar em sequência (atraso = (slot-1)*stagger), cada um eased. */
+function renderStack(p,tg,C,tRaw){
+  const n=p.count|0; ensurePool(n);
+  const dir=tg.direction==="up"?-1:1;
+  const sz=p.planeSize*2.4;
+  const stepY=sz*0.13 + p.perspective*0.30;
+  const vis=Math.min(p.visible,n);
+  const raw=frac(tRaw*p.cycles - p.delay/state.dur)*n;   // ponteiro 0..n no loop
+  const base=Math.floor(raw), s=frac(raw);                // passo atual e progresso 0..1
+  const exitFrac=0.35;                                     // saída relativa ao passo
+  const fadeStart=0.9, fadeWin=1-fadeStart;                // fade só na ponta (10%): saída no fim, entrada no início (espelho)
+  const stag=p.stagger;                                    // atraso individual por card
+  for(let i=0;i<n;i++){
+    const el=pool[i]; planeStyle(el,i,n,p.cornerRadius);
+    const L=((i-base)%n+n)%n;                              // slot inteiro no início do passo (0=frente)
+    let cs;                                                // slot contínuo COM stagger (L → L-1)
+    if(L===0){                                             // card da frente: SAI rápido (independe do stagger)
+      cs=-clamp(s/exitFrac,0,1);                           // 0 → -1 (rápido)
+    }else{                                                 // seguidores: cada um num tempo diferente
+      const delay=(L-1)*stag;                              // mais à frente move antes
+      const local=clamp((s-delay)/Math.max(0.05,1-delay),0,1);
+      cs=L-bezier(local,C);                                // eased individual
+    }
+    let y,scale,op,z,show=true;
+    if(cs<0){                                              // SAINDO: desce opaco, fade-out rápido só no fim (últimos 10%)
+      const ex=-cs;                                        // 0..1 (progresso da saída)
+      op=ex<fadeStart?1:1-smooth((ex-fadeStart)/fadeWin);
+      y=dir*(ex*stepY*1.0); scale=(p.zoom/100)*(1+ex*0.02); z=3000;
+    }else if(cs<=vis){                                     // pilha visível
+      scale=(p.zoom/100)*(1-cs*0.07); y=dir*(-cs*stepY); op=1; z=2000-Math.round(cs*10);
+    }else if(cs<=vis+1){                                   // ENTRANDO pelo fundo: espelho da saída (fade-in rápido nos 1os 10%)
+      const slot=Math.min(cs,vis);
+      const ep=(vis+1)-cs;                                 // 0 (surgindo) .. 1 (na pilha)
+      scale=(p.zoom/100)*(1-slot*0.07); y=dir*(-slot*stepY);
+      op=ep<fadeWin?smooth(ep/fadeWin):1; z=2000-Math.round(slot*10);
+    }else{ show=false; }
+    el.style.display=show?"flex":"none";
+    if(!show)continue;
+    el.style.width=el.style.height=sz+"px";
+    el.style.zIndex=z+"";
+    el.style.opacity=op;
+    el.style.transform=`translate(-50%,-50%) translate(${p.offsetX*2}px,${y+p.offsetY*2}px) scale(${scale})`;
+  }
+}
+
+/* CAROUSEL: avança 1 slot por ciclo com Glide (arranca e assenta), não scroll linear */
+function renderSlide(p,tg,C,tRaw){
+  const n=p.count|0; ensurePool(n);
+  const sz=p.planeSize, step=sz+p.gap, span=n*step;
+  const horiz=(tg.direction==="left"||tg.direction==="right");
+  const sign=(tg.direction==="left"||tg.direction==="up")?-1:1;
+  const k=tRaw*p.cycles - p.delay/state.dur;
+  const shift=(Math.floor(k)+bezier(frac(k),C))*step*sign;   // stepped-eased
+  for(let i=0;i<n;i++){
+    const el=pool[i]; planeStyle(el,i,n,p.cornerRadius);
+    let pos=((i*step + shift)%span + span)%span - span/2;
+    const cd=Math.abs(pos)/(span/2);                          // 0 centro .. 1 borda
+    const focus=1-smooth(cd);                                 // realce suave no centro
+    const scale=tg.scaleCenter==="on"?(0.6+0.4*focus):1;
+    let tilt=0;
+    if(tg.tiltStyle==="fan")tilt=(pos/(span/2))*24;
+    else if(tg.tiltStyle==="uniform")tilt=12;
+    else if(tg.tiltStyle==="alternate")tilt=(i%2?1:-1)*14;
+    const x=horiz?pos+p.offsetX*2:p.offsetX*2, y=horiz?p.offsetY*2:pos+p.offsetY*2;
+    el.style.width=el.style.height=sz+"px";
+    el.style.zIndex=(1000+Math.round(focus*100))+"";
+    el.style.opacity=0.4+0.6*focus;
+    el.style.transform=`translate(-50%,-50%) translate(${x}px,${y}px) `+
+      `rotateY(${horiz?tilt:0}deg) rotateX(${horiz?0:tilt}deg) scale(${scale})`;
+  }
+}
+
+/* WHEEL: gira cycleDeg por ciclo com Flow (acelera no meio, assenta na borda = roleta) */
+function renderWheel(p,tg,C,tRaw){
+  const n=p.count|0; ensurePool(n);
+  const R=p.ringRadius, sz=p.thumbSize;
+  const dir=tg.direction==="reverse"?-1:1;
+  const k=tRaw*p.cycles - p.delay/state.dur;
+  const turned=(Math.floor(k)+bezier(frac(k),C))*p.cycleDeg*dir;
+  for(let i=0;i<n;i++){
+    const el=pool[i]; planeStyle(el,i,n,p.cornerRadius);
+    const ang=(i*360/n + turned)*Math.PI/180;
+    const x=Math.sin(ang)*R + p.offsetX*2;
+    const y=-Math.cos(ang)*R + p.offsetY*2;
+    const front=(-Math.cos(ang)+1)/2;                         // 0 fundo .. 1 topo(foco)
+    const big=tg.bigImage==="on"?(1+smooth(front)*0.7):1;
+    const spin=tg.spinThumbs==="on"?0:(i*360/n + turned);
+    el.style.width=el.style.height=sz+"px";
+    el.style.zIndex=(1000+Math.round(front*100))+"";
+    el.style.opacity=0.5+0.5*front;
+    el.style.transform=`translate(-50%,-50%) translate(${x}px,${y}px) rotate(${spin}deg) scale(${big})`;
+  }
+}
+
+const SCENES={stack:renderStack,slide:renderSlide,wheel:renderWheel};
+
+/* =====================================================================
+   STATE + UI
+   ===================================================================== */
+let state={key:"stack01",p:{},t:{},curve:CURVES.Smooth.slice(),curveName:"Smooth",
+  time:0,playing:true,loop:true,dur:2.6};
+const stage=document.getElementById("stage");
+let pool=[];
+function ensurePool(n){
+  while(pool.length<n){const d=document.createElement("div");d.className="plane";stage.appendChild(d);pool.push(d);}
+  pool.forEach((d,i)=>d.style.display=i<n?"flex":"none");
+}
+function defP(sections){const o={};for(const s of sections)for(const k in s.params)o[k]=s.params[k][2];return o;}
+function defT(t){const o={};for(const k in t)o[k]=t[k].def;return o;}
+function render(){const t=REGISTRY[state.key];SCENES[t.scene](state.p,state.t,state.curve,state.time/state.dur);}
+
+function buildSidebar(){
+  const sb=document.getElementById("sidebar");
+  for(const key in REGISTRY){
+    const e=REGISTRY[key];
+    if(e.separator){const g=document.createElement("div");g.className="group";g.textContent=e.label;sb.appendChild(g);continue;}
+    const d=document.createElement("div");d.className="tpl"+(key===state.key?" active":"");
+    d.dataset.key=key;
+    d.innerHTML=`<span class="dot"></span>${e.label}`;
+    d.onclick=()=>selectTemplate(key);
+    sb.appendChild(d);
+  }
+  const g=document.createElement("div");g.className="group";g.textContent="Próximos (não construídos)";sb.appendChild(g);
+  COMING.forEach(name=>{const d=document.createElement("div");d.className="tpl soon";
+    d.innerHTML=`<span class="dot"></span>${name}`;sb.appendChild(d);});
+}
+function selectTemplate(key){
+  state.key=key; const t=REGISTRY[key];
+  state.p=defP(t.sections); state.t=defT(t.toggles||{});
+  state.curve=t.curve.slice(); state.curveName=t.curveName;
+  state.time=0; state.dur=state.p.duration||3;
+  document.querySelectorAll(".tpl").forEach(el=>el.classList.toggle("active",el.dataset.key===key));
+  document.getElementById("stagelabel").textContent=t.label+"  ·  "+t.scene+"  ·  ease: "+state.curveName;
+  buildParams(); buildTicks();
+}
+function drawCurve(cv,c){
+  const ctx=cv.getContext("2d"),W=cv.width=56,H=cv.height=56;
+  ctx.clearRect(0,0,W,H);ctx.strokeStyle="#3a3f46";ctx.strokeRect(.5,.5,W-1,H-1);
+  ctx.strokeStyle="#ffb020";ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<=40;i++){const x=i/40,y=bezier(x,c);const px=4+x*(W-8),py=H-4-y*(H-8);i?ctx.lineTo(px,py):ctx.moveTo(px,py);}
+  ctx.stroke();
+}
+/* factory: 1 slider isolado. k/min/max/step viram parâmetros da função,
+   então cada closure tem seu próprio escopo — nunca vaza nem reseta. */
+function makeSlider(k,min,max,step){
+  const row=document.createElement("div");row.className="row";
+  const lab=document.createElement("label");
+  const nm=document.createElement("span");nm.textContent=k;
+  const val=document.createElement("b");val.textContent=fmt(state.p[k]);
+  lab.appendChild(nm);lab.appendChild(val);
+  const inp=document.createElement("input");
+  inp.type="range";inp.min=min;inp.max=max;inp.step=step;inp.value=state.p[k];
+  inp.addEventListener("input",()=>{
+    const v=parseFloat(inp.value);
+    state.p[k]=v; val.textContent=fmt(v);
+    if(k==="duration"){state.dur=v;buildTicks();}
+  });
+  row.appendChild(lab);row.appendChild(inp);
+  return row;
+}
+function makeToggle(k,options){
+  const row=document.createElement("div");row.className="row";
+  const lab=document.createElement("label");lab.textContent=k;
+  const sel=document.createElement("select");
+  options.forEach(o=>{const op=document.createElement("option");op.value=op.textContent=o;
+    if(o===state.t[k])op.selected=true;sel.appendChild(op);});
+  sel.addEventListener("change",()=>{state.t[k]=sel.value;});
+  row.appendChild(lab);row.appendChild(sel);
+  return row;
+}
+function buildParams(){
+  const t=REGISTRY[state.key], panel=document.getElementById("paramPanel");
+  panel.innerHTML="";
+  // easing picker (o controle do dinamismo)
+  const eh=document.createElement("h3");eh.textContent="Easing (curva de velocidade)";panel.appendChild(eh);
+  const box=document.createElement("div");box.className="easebox";
+  const cv=document.createElement("canvas");cv.className="ease";box.appendChild(cv);
+  const sel=document.createElement("select");
+  Object.keys(CURVES).forEach(name=>{const o=document.createElement("option");o.value=o.textContent=name;
+    if(name===state.curveName)o.selected=true;sel.appendChild(o);});
+  sel.onchange=()=>{state.curveName=sel.value;state.curve=CURVES[sel.value].slice();drawCurve(cv,state.curve);
+    document.getElementById("stagelabel").textContent=t.label+"  ·  "+t.scene+"  ·  ease: "+state.curveName;};
+  box.appendChild(sel);panel.appendChild(box);drawCurve(cv,state.curve);
+  // params — cada slider isolado numa factory (closure garantida)
+  t.sections.forEach(sec=>{
+    const h=document.createElement("h3");h.textContent=sec.title;panel.appendChild(h);
+    for(const k in sec.params){
+      const spec=sec.params[k];
+      panel.appendChild(makeSlider(k,spec[0],spec[1],spec[3]||1));
+    }
+  });
+  if(t.toggles&&Object.keys(t.toggles).length){
+    const h=document.createElement("h3");h.textContent="Toggles";panel.appendChild(h);
+    for(const k in t.toggles){
+      panel.appendChild(makeToggle(k,t.toggles[k].options));
+    }
+  }
+  const rb=document.createElement("button");rb.className="btn reset";rb.textContent="↺ Reset";
+  rb.onclick=()=>selectTemplate(state.key);panel.appendChild(rb);
+  const hint=document.createElement("div");hint.className="hint";
+  hint.textContent="Troque a curva de easing e veja a velocidade mudar (arranca/assenta). Stack tem anticipation + queda; Carousel e Wheel avançam 1 passo por ciclo com easing.";
+  panel.appendChild(hint);
+}
+const fmt=v=>Math.abs(v)>=100?Math.round(v):Math.round(v*100)/100;
+function buildTicks(){const ticks=document.getElementById("ticks");ticks.innerHTML="";
+  const n=Math.min(20,Math.max(4,Math.round(state.dur)));for(let i=0;i<n;i++)ticks.appendChild(document.createElement("i"));}
+
+const playBtn=document.getElementById("playBtn"),loopBtn=document.getElementById("loopBtn");
+playBtn.onclick=()=>{state.playing=!state.playing;playBtn.textContent=state.playing?"⏸ Pause":"▶ Play";};
+loopBtn.onclick=()=>{state.loop=!state.loop;loopBtn.textContent="⟳ Loop: "+(state.loop?"on":"off");};
+const track=document.getElementById("track");
+function scrub(e){const r=track.getBoundingClientRect();state.time=clamp((e.clientX-r.left)/r.width,0,1)*state.dur;}
+let dragging=false;
+track.onmousedown=e=>{dragging=true;scrub(e);};
+window.onmousemove=e=>{if(dragging)scrub(e);};
+window.onmouseup=()=>dragging=false;
+
+let last=performance.now(),fpsAcc=0,fpsN=0;
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  fpsAcc+=1/dt;fpsN++;
+  if(fpsN>=20){document.getElementById("fps").textContent=Math.round(fpsAcc/fpsN)+" fps";fpsAcc=fpsN=0;}
+  if(state.playing){state.time+=dt;
+    if(state.time>=state.dur){if(state.loop)state.time%=state.dur;else{state.time=state.dur;state.playing=false;playBtn.textContent="▶ Play";}}}
+  const pct=(state.time/state.dur)*100;
+  document.getElementById("fill").style.width=pct+"%";
+  document.getElementById("playhead").style.left=pct+"%";
+  document.getElementById("timeLabel").textContent=state.time.toFixed(2)+"s / "+state.dur.toFixed(2)+"s";
+  render();requestAnimationFrame(frame);
+}
+buildSidebar();selectTemplate("stack01");requestAnimationFrame(frame);
+</script>
+</body>
+</html>
