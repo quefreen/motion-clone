@@ -3,104 +3,176 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Motion Clone — POC v2</title>
+<title>Motion Clone</title>
 <style>
   :root{
-    --bg:#0b0c0e; --panel:#141619; --panel2:#1b1e22; --line:#26292e;
-    --txt:#e7e9ec; --dim:#8a9099; --accent:#ffb020; --accent2:#5b8dff; --radius:10px;
+    --bg-app:#1a1a1a; --panel:#171717; --panel2:#181818; --stage:#0d0d0d; --stage2:#131313;
+    --track:#232323; --track-hover:#282828; --fill:#2d2d2d; --handle:#6a6a6a;
+    --border:#2a2a2a; --border-strong:#333;
+    --accent:#4a90e2; --accent-tint:#64b4ff1a; --accent-tint2:#64b4ff29;
+    --text:#e8e8e8; --text2:#d0d0d0; --muted:#8a8a8a; --muted2:#5a5a5a;
+    --radius:8px;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
-    font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    -webkit-font-smoothing:antialiased;overflow:hidden}
-  .app{display:grid;grid-template-columns:230px 1fr 270px;height:100vh}
-  .sidebar{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px 0}
-  .brand{padding:4px 16px 14px;font-weight:700;letter-spacing:.5px;font-size:15px}
-  .brand small{color:var(--dim);font-weight:400;font-size:11px;display:block;margin-top:2px}
-  .group{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.8px;padding:12px 16px 4px}
-  .tpl{padding:7px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;border-left:2px solid transparent}
-  .tpl:hover{background:var(--panel2)}
-  .tpl.active{background:var(--panel2);border-left-color:var(--accent);color:#fff}
-  .tpl .dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);flex:0 0 auto}
-  .tpl.soon{opacity:.4;cursor:not-allowed}
-  .tpl.soon .dot{background:var(--dim)}
-  .center{display:flex;flex-direction:column;min-width:0}
-  .stagewrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden}
-  .stage{width:100%;height:100%;max-width:900px;position:relative;perspective:1400px;
-    overflow:hidden;border-radius:var(--radius);
-    background:radial-gradient(120% 120% at 50% 30%,#15181c,#0b0c0e)}
+  html,body{margin:0;height:100%;background:var(--bg-app);color:var(--text);
+    font:12px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;user-select:none}
+  button{font-family:inherit}
+
+  .app{display:grid;grid-template-rows:44px 1fr;height:100vh}
+
+  /* ---- topbar ---- */
+  .topbar{display:flex;align-items:center;gap:14px;padding:0 14px;
+    background:var(--panel);border-bottom:1px solid var(--border)}
+  .logo{font-weight:700;font-size:14px;letter-spacing:.5px}
+  .logo span{color:var(--muted);font-weight:400;font-size:11px;margin-left:6px}
+  .topbar .spacer{flex:1}
+  .top-btn{background:var(--track);border:1px solid var(--border-strong);color:var(--text2);
+    padding:6px 12px;border-radius:7px;cursor:pointer;font-size:12px}
+  .top-btn:hover{border-color:var(--accent)}
+  .top-btn.accent{background:var(--accent);border-color:var(--accent);color:#0b1220;font-weight:600}
+
+  .body{display:grid;grid-template-columns:248px 1fr 296px;min-height:0}
+
+  /* ---- LEFT: gallery ---- */
+  .sidebar{background:var(--panel);border-right:1px solid var(--border);
+    overflow-y:auto;padding:12px 12px 30px}
+  .tog-wrap{position:relative;display:flex;background:var(--track);border-radius:7px;
+    padding:0;margin-bottom:12px;height:30px}
+  .tog-pill{position:absolute;top:3px;bottom:3px;left:0;background:var(--fill);border-radius:6px;
+    transition:transform .28s cubic-bezier(.32,.72,.26,1),width .28s cubic-bezier(.32,.72,.26,1);z-index:0}
+  .tog-btn{flex:1;z-index:1;background:0;border:none;color:var(--muted);cursor:pointer;
+    font-size:12px;transition:color .18s}
+  .tog-btn.active{color:var(--text)}
+  .search{width:100%;background:var(--track);border:1px solid var(--border);border-radius:7px;
+    color:var(--text);padding:7px 10px;font-size:12px;margin-bottom:14px;outline:none}
+  .search:focus{border-color:var(--accent)}
+  .cat{margin-bottom:6px}
+  .cat-row{display:flex;align-items:center;gap:6px;color:var(--text2);cursor:pointer;
+    padding:6px 4px;font-size:11px;letter-spacing:.4px;text-transform:uppercase}
+  .cat-row .chev{transition:transform .18s;color:var(--muted2);font-size:9px}
+  .cat.collapsed .chev{transform:rotate(-90deg)}
+  .cat.collapsed .grid{display:none}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:2px 0 10px}
+  .tile{background:none;border:2px solid transparent;border-radius:12px;padding:4px;cursor:pointer;
+    display:flex;flex-direction:column;gap:5px;color:var(--muted)}
+  .tile:hover{background:var(--panel2)}
+  .tile.active{border-color:var(--accent);background:var(--accent-tint)}
+  .tile.soon{opacity:.5;cursor:not-allowed}
+  .tile .thumb{aspect-ratio:3/4;width:100%;border-radius:7px;object-fit:cover;display:block;
+    background:var(--stage2)}
+  .tile .tname{font-size:10px;text-align:center;letter-spacing:.3px;color:var(--text2);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tile.active .tname{color:#fff}
+
+  /* ---- CENTER ---- */
+  .center{display:flex;flex-direction:column;min-width:0;background:var(--stage)}
+  .stagewrap{flex:1;display:flex;align-items:center;justify-content:center;padding:28px;overflow:hidden}
+  .stage{width:100%;height:100%;position:relative;perspective:1400px;overflow:hidden;
+    border-radius:10px;background:radial-gradient(130% 130% at 50% 30%,var(--stage2),var(--stage))}
   .plane{position:absolute;left:50%;top:50%;will-change:transform;background-size:cover;
-    box-shadow:0 12px 40px rgba(0,0,0,.5);backface-visibility:hidden;display:flex;
-    align-items:center;justify-content:center;font-weight:700;font-size:20px;
-    color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.5)}
-  .stagelabel{position:absolute;top:12px;left:16px;color:var(--dim);font-size:11px;letter-spacing:.5px}
-  .fps{position:absolute;top:12px;right:16px;color:var(--dim);font-size:11px}
-  .timeline{background:var(--panel);border-top:1px solid var(--line);padding:10px 16px 14px;
-    display:flex;flex-direction:column;gap:8px}
-  .transport{display:flex;align-items:center;gap:10px}
-  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:7px;
-    padding:6px 12px;cursor:pointer;font-size:12px}
-  .btn:hover{border-color:var(--accent)}
-  .btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
-  .time{color:var(--dim);font-variant-numeric:tabular-nums;font-size:11px;min-width:96px}
-  .track{position:relative;height:26px;background:var(--panel2);border-radius:6px;cursor:pointer;overflow:hidden}
-  .track .fill{position:absolute;top:0;left:0;bottom:0;background:rgba(255,176,32,.14);border-right:2px solid var(--accent)}
-  .track .ticks{position:absolute;inset:0;display:flex}
-  .track .ticks i{flex:1;border-right:1px solid var(--line)}
-  .track .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent)}
-  .params{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:14px 14px 40px}
-  .params h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);margin:16px 0 8px}
-  .params h3:first-child{margin-top:0}
-  .row{margin-bottom:12px}
-  .row label{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-bottom:4px}
-  .row label b{color:var(--txt);font-weight:600;font-variant-numeric:tabular-nums}
-  input[type=range]{width:100%;accent-color:var(--accent);height:4px}
-  select{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
-    border-radius:6px;padding:5px 8px;font-size:12px}
-  .reset{margin-top:8px;width:100%}
-  .hint{color:var(--dim);font-size:10px;margin-top:20px;line-height:1.5}
-  .easebox{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-  canvas.ease{width:56px;height:56px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;flex:0 0 auto}
+    background-position:center;box-shadow:0 12px 40px rgba(0,0,0,.5);backface-visibility:hidden;
+    display:flex;align-items:center;justify-content:center}
+  .stagelabel{position:absolute;top:12px;left:14px;color:var(--muted);font-size:11px}
+  .fps{position:absolute;top:12px;right:14px;color:var(--muted2);font-size:11px}
+
+  /* ---- timeline ---- */
+  .timeline{background:var(--panel);border-top:1px solid var(--border);padding:8px 14px 12px}
+  .tl-transport{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .tl-btn{width:30px;height:30px;border-radius:7px;background:var(--track);border:1px solid var(--border-strong);
+    color:var(--text);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+  .tl-btn:hover{border-color:var(--accent)}
+  .tl-btn.play{background:var(--accent);border-color:var(--accent);color:#0b1220}
+  .tl-time{color:var(--muted);font-variant-numeric:tabular-nums;font-size:11px;min-width:100px}
+  .tl-loop{margin-left:auto;color:var(--muted);cursor:pointer;font-size:11px;padding:5px 8px;
+    border-radius:6px;border:1px solid var(--border)}
+  .tl-loop.on{color:var(--accent);border-color:var(--accent)}
+  .tl-track{position:relative;height:28px;background:var(--track);border-radius:7px;cursor:pointer;overflow:hidden}
+  .tl-ruler{position:absolute;top:0;left:0;right:0;height:100%}
+  .tl-ruler-dot{position:absolute;top:5px;width:2px;height:2px;border-radius:50%;
+    background:var(--muted2);transform:translate(-50%,-50%)}
+  .tl-fill{position:absolute;top:0;bottom:0;left:0;background:var(--accent-tint2);border-right:1.5px solid var(--accent)}
+  .tl-playhead{position:absolute;top:0;bottom:0;width:1.5px;background:var(--accent)}
+
+  /* ---- RIGHT: controls ---- */
+  .controls{background:var(--panel);border-left:1px solid var(--border);overflow-y:auto;padding:14px 14px 40px}
+  .sec-title{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);
+    margin:18px 0 10px}
+  .sec-title:first-child{margin-top:0}
+  .ctrl{margin-bottom:14px}
+  .ctrl label{display:flex;justify-content:space-between;align-items:center;color:var(--text2);
+    font-size:11px;margin-bottom:2px}
+  .ctrl .val{color:var(--text);font-variant-numeric:tabular-nums;cursor:ew-resize;
+    padding:1px 4px;border-radius:4px}
+  .ctrl .val:hover{background:var(--track)}
+  .ctrl-track{position:relative;height:34px;background:var(--track);border-radius:8px;
+    margin-top:8px;overflow:hidden;cursor:pointer}
+  .ctrl-track:hover{background:var(--track-hover)}
+  .ctrl-fill{position:absolute;top:0;bottom:0;left:0;width:0;background:var(--fill);border-radius:8px;z-index:0}
+  .ctrl-handle{position:absolute;top:50%;left:0;width:2px;height:16px;border-radius:1px;
+    background:var(--handle);transform:translate(-50%,-50%);z-index:2;transition:background .12s}
+  .ctrl-track:hover .ctrl-handle{background:#9a9a9a}
+  /* toggle inside controls */
+  .ctrl .tog-wrap{margin:6px 0 0;height:30px}
+  /* easing picker */
+  .easing-list{display:flex;flex-direction:column;gap:1px}
+  .easing-opt{width:100%;display:flex;justify-content:space-between;align-items:center;
+    background:0;border:none;color:var(--text2);cursor:pointer;padding:7px 10px;border-radius:7px;font-size:12px}
+  .easing-opt:hover{background:var(--track)}
+  .easing-opt.active{background:var(--accent-tint);color:#fff}
+  .easing-glyph{color:var(--muted2);flex-shrink:0;margin-left:8px}
+  .easing-opt.active .easing-glyph{color:var(--accent)}
+  .hint{color:var(--muted2);font-size:10px;margin-top:16px;line-height:1.5}
 </style>
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar" id="sidebar">
-    <div class="brand">Motion Clone <small>POC v2 · bezier + stepped · 100% local</small></div>
-  </aside>
-  <section class="center">
-    <div class="stagewrap">
-      <div class="stage" id="stage">
-        <div class="stagelabel" id="stagelabel"></div>
-        <div class="fps" id="fps"></div>
+  <div class="topbar">
+    <div class="logo">Motion Clone <span>· local · 3 de 189</span></div>
+    <div class="spacer"></div>
+    <button class="top-btn">Share</button>
+    <button class="top-btn accent">Export</button>
+  </div>
+  <div class="body">
+    <aside class="sidebar">
+      <div class="tog-wrap" id="srcTog">
+        <div class="tog-pill" id="srcPill"></div>
+        <button class="tog-btn active">Templates</button>
+        <button class="tog-btn">Custom</button>
       </div>
-    </div>
-    <div class="timeline">
-      <div class="transport">
-        <button class="btn primary" id="playBtn">▶ Play</button>
-        <button class="btn" id="loopBtn">⟳ Loop: on</button>
-        <span class="time" id="timeLabel">0.00s / 0.00s</span>
+      <input class="search" id="search" placeholder="Search templates…">
+      <div id="gallery"></div>
+    </aside>
+
+    <section class="center">
+      <div class="stagewrap">
+        <div class="stage" id="stage">
+          <div class="stagelabel" id="stagelabel"></div>
+          <div class="fps" id="fps"></div>
+        </div>
       </div>
-      <div class="track" id="track">
-        <div class="ticks" id="ticks"></div>
-        <div class="fill" id="fill"></div>
-        <div class="playhead" id="playhead"></div>
+      <div class="timeline">
+        <div class="tl-transport">
+          <button class="tl-btn play" id="playBtn">▶</button>
+          <span class="tl-time" id="timeLabel">0.00 / 0.00s</span>
+          <div class="tl-loop on" id="loopBtn">⟳ Loop</div>
+        </div>
+        <div class="tl-track" id="track">
+          <div class="tl-ruler" id="ruler"></div>
+          <div class="tl-fill" id="fill"></div>
+          <div class="tl-playhead" id="playhead"></div>
+        </div>
       </div>
-    </div>
-  </section>
-  <aside class="params" id="paramPanel"></aside>
+    </section>
+
+    <aside class="controls" id="controls"></aside>
+  </div>
 </div>
 
 <script>
 /* =====================================================================
-   MOTION ENGINE — reconstruído do modelo do produto (não copia código):
-   • cubic-bezier easing (Newton-Raphson, igual ao evaluator do produto)
-   • curvas nomeadas + curva default por preset (tabela real g_)
-   • progresso STEPPED por ciclo (avança 1 slot/ciclo com easing = "assenta")
-   • stagger + anticipation (deslocamento antes de cair, overlap dos cards)
+   MOTION ENGINE — reconstruído do modelo do produto (não copia código)
    ===================================================================== */
-
-/* ---- cubic-bezier: p0=0,p3=1, control pts c=[x1,y1,x2,y2] ---- */
 function bezier(x,c){
   const x1=c[0],y1=c[1],x2=c[2],y2=c[3];
   if(x<=0)return 0; if(x>=1)return 1;
@@ -113,26 +185,21 @@ function bezier(x,c){
   }
   return 3*(1-h)*(1-h)*h*y1 + 3*(1-h)*h*h*y2 + h*h*h;
 }
-/* named curves (subset do easingPresets do produto) */
 const CURVES={
   Flow:[.86,.14,.14,.86], Sweep:[.7,.101,.3,.899], Settle:[.8,.27,.2,.75],
   Glide:[.33,0,0,1], Snap:[1,0,0,1], Smooth:[.76,0,.24,1], Ease:[.87,0,.13,1],
   Linear:[.25,.25,.75,.75], "Expo Out":[.19,1,.22,1], "Quart Out":[.165,.84,.44,1],
   "Back Out":[.34,1.56,.64,1], "Cubic In Out":[.645,.045,.355,1],
 };
-/* helpers do planner */
 const TAU=Math.PI*2;
 const frac=x=>x-Math.floor(x);
-const wave=x=>Math.sin(Math.PI*frac(x));            // 0→1→0
+const wave=x=>Math.sin(Math.PI*frac(x));
 const smooth=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);};
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 
-/* =====================================================================
-   REGISTRY — schema real + curva bezier default por preset (tabela g_)
-   ===================================================================== */
 const REGISTRY = {
   _s_stack:{label:"Stack",separator:true},
-  stack01:{label:"Stack 01",scene:"stack",curve:[.76,0,.24,1],curveName:"Smooth",
+  stack01:{label:"Stack 01",scene:"stack",curve:[.76,0,.24,1],curveName:"Smooth",preview:"previews/p06.webm",
     sections:[
       {title:"Scene",params:{count:[2,20,6,1],planeSize:[10,200,200,1],cornerRadius:[0,80,0,1],
         visible:[2,8,3,1],perspective:[0,1000,0,1],zoom:[50,300,100,1],
@@ -142,7 +209,7 @@ const REGISTRY = {
     toggles:{direction:{options:["down","up"],def:"down"}}},
 
   _s_carousel:{label:"Carousel",separator:true},
-  carousel01:{label:"Carousel 01",scene:"slide",curve:[.33,0,0,1],curveName:"Glide",
+  carousel01:{label:"Carousel 01",scene:"slide",curve:[.33,0,0,1],curveName:"Glide",preview:"previews/p01.webm",
     sections:[
       {title:"Scene",params:{count:[2,20,5,1],planeSize:[50,600,210,1],cornerRadius:[0,80,12,1],
         gap:[0,400,44,1],offsetX:[-100,100,0,.5],offsetY:[-100,100,0,.5]}},
@@ -152,7 +219,7 @@ const REGISTRY = {
       tiltStyle:{options:["off","fan","uniform","alternate"],def:"fan"}}},
 
   _s_wheel:{label:"Wheel",separator:true},
-  wheel01:{label:"Wheel 01",scene:"wheel",curve:[.86,.14,.14,.86],curveName:"Flow",
+  wheel01:{label:"Wheel 01",scene:"wheel",curve:[.86,.14,.14,.86],curveName:"Flow",preview:"previews/p07.webm",
     sections:[
       {title:"Scene",params:{count:[3,20,10,1],ringRadius:[120,500,300,1],thumbSize:[40,220,110,1],
         cornerRadius:[0,50,8,1],offsetX:[-100,100,0,.5],offsetY:[-100,100,0,.5]}},
@@ -164,60 +231,50 @@ const REGISTRY = {
 };
 const COMING=["Orbit","3D","Field","Wipe","Spin","Grid","Globe","Spiral",
   "Magazine","Gravity","Parallax","Deck","Flip","Marquee","Scale","Proximity"];
+const PREVIEWS=Array.from({length:13},(_,i)=>`previews/p${String(i+1).padStart(2,"0")}.webm`);
 
-/* imagens reais do original (baixadas local em img/) */
 const IMAGES=["img/sample01.png","img/sample02.png","img/sample03.png","img/sample04.png",
   "img/sample05.png","img/sample06.png","img/sample07.png","img/sample08.png",
   "img/sample09.png","img/sample10.png"];
 function planeStyle(el,i,n,corner){
   const hue=(i*360/n)|0;
-  el.style.backgroundColor=`hsl(${hue} 40% 40%)`;               // fallback enquanto carrega
+  el.style.backgroundColor=`hsl(${hue} 40% 40%)`;
   el.style.backgroundImage=`url("${IMAGES[i%IMAGES.length]}")`;
   el.style.borderRadius=corner+"px";
-  el.textContent="";
 }
 
-/* =====================================================================
-   SCENES — cada uma usa progresso eased (bezier) + stepped + stagger
-   tRaw = tempo global normalizado (0..1 no loop)
-   ===================================================================== */
-
-/* STACK: 'visible' = quantos na pilha; 'count' = pool que CICLA.
-   STAGGER individual (planner usa `mod(t+u*stagger,1)`): cada card seguidor
-   se move num tempo diferente — o da frente sai rápido, e os de trás entram
-   no lugar em sequência (atraso = (slot-1)*stagger), cada um eased. */
+/* STACK */
 function renderStack(p,tg,C,tRaw){
   const n=p.count|0; ensurePool(n);
   const dir=tg.direction==="up"?-1:1;
   const sz=p.planeSize*2.4;
   const stepY=sz*0.13 + p.perspective*0.30;
   const vis=Math.min(p.visible,n);
-  const raw=frac(tRaw*p.cycles - p.delay/state.dur)*n;   // ponteiro 0..n no loop
-  const base=Math.floor(raw), s=frac(raw);                // passo atual e progresso 0..1
-  const exitFrac=0.35;                                     // saída relativa ao passo
-  const fadeStart=0.9, fadeWin=1-fadeStart;                // fade só na ponta (10%): saída no fim, entrada no início (espelho)
-  const stag=p.stagger;                                    // atraso individual por card
+  const raw=frac(tRaw*p.cycles - p.delay/state.dur)*n;
+  const base=Math.floor(raw), s=frac(raw);
+  const exitFrac=0.35;
+  const fadeStart=0.9, fadeWin=1-fadeStart;
+  const stag=p.stagger;
   for(let i=0;i<n;i++){
     const el=pool[i]; planeStyle(el,i,n,p.cornerRadius);
-    const L=((i-base)%n+n)%n;                              // slot inteiro no início do passo (0=frente)
-    let cs;                                                // slot contínuo COM stagger (L → L-1)
-    if(L===0){                                             // card da frente: SAI rápido (independe do stagger)
-      cs=-clamp(s/exitFrac,0,1);                           // 0 → -1 (rápido)
-    }else{                                                 // seguidores: cada um num tempo diferente
-      const delay=(L-1)*stag;                              // mais à frente move antes
+    const L=((i-base)%n+n)%n;
+    let cs;
+    if(L===0){ cs=-clamp(s/exitFrac,0,1); }
+    else{
+      const delay=(L-1)*stag;
       const local=clamp((s-delay)/Math.max(0.05,1-delay),0,1);
-      cs=L-bezier(local,C);                                // eased individual
+      cs=L-bezier(local,C);
     }
     let y,scale,op,z,show=true;
-    if(cs<0){                                              // SAINDO: desce opaco, fade-out rápido só no fim (últimos 10%)
-      const ex=-cs;                                        // 0..1 (progresso da saída)
+    if(cs<0){
+      const ex=-cs;
       op=ex<fadeStart?1:1-smooth((ex-fadeStart)/fadeWin);
       y=dir*(ex*stepY*1.0); scale=(p.zoom/100)*(1+ex*0.02); z=3000;
-    }else if(cs<=vis){                                     // pilha visível
+    }else if(cs<=vis){
       scale=(p.zoom/100)*(1-cs*0.07); y=dir*(-cs*stepY); op=1; z=2000-Math.round(cs*10);
-    }else if(cs<=vis+1){                                   // ENTRANDO pelo fundo: espelho da saída (fade-in rápido nos 1os 10%)
+    }else if(cs<=vis+1){
       const slot=Math.min(cs,vis);
-      const ep=(vis+1)-cs;                                 // 0 (surgindo) .. 1 (na pilha)
+      const ep=(vis+1)-cs;
       scale=(p.zoom/100)*(1-slot*0.07); y=dir*(-slot*stepY);
       op=ep<fadeWin?smooth(ep/fadeWin):1; z=2000-Math.round(slot*10);
     }else{ show=false; }
@@ -229,20 +286,19 @@ function renderStack(p,tg,C,tRaw){
     el.style.transform=`translate(-50%,-50%) translate(${p.offsetX*2}px,${y+p.offsetY*2}px) scale(${scale})`;
   }
 }
-
-/* CAROUSEL: avança 1 slot por ciclo com Glide (arranca e assenta), não scroll linear */
+/* CAROUSEL */
 function renderSlide(p,tg,C,tRaw){
   const n=p.count|0; ensurePool(n);
   const sz=p.planeSize, step=sz+p.gap, span=n*step;
   const horiz=(tg.direction==="left"||tg.direction==="right");
   const sign=(tg.direction==="left"||tg.direction==="up")?-1:1;
   const k=tRaw*p.cycles - p.delay/state.dur;
-  const shift=(Math.floor(k)+bezier(frac(k),C))*step*sign;   // stepped-eased
+  const shift=(Math.floor(k)+bezier(frac(k),C))*step*sign;
   for(let i=0;i<n;i++){
     const el=pool[i]; planeStyle(el,i,n,p.cornerRadius);
     let pos=((i*step + shift)%span + span)%span - span/2;
-    const cd=Math.abs(pos)/(span/2);                          // 0 centro .. 1 borda
-    const focus=1-smooth(cd);                                 // realce suave no centro
+    const cd=Math.abs(pos)/(span/2);
+    const focus=1-smooth(cd);
     const scale=tg.scaleCenter==="on"?(0.6+0.4*focus):1;
     let tilt=0;
     if(tg.tiltStyle==="fan")tilt=(pos/(span/2))*24;
@@ -256,8 +312,7 @@ function renderSlide(p,tg,C,tRaw){
       `rotateY(${horiz?tilt:0}deg) rotateX(${horiz?0:tilt}deg) scale(${scale})`;
   }
 }
-
-/* WHEEL: gira cycleDeg por ciclo com Flow (acelera no meio, assenta na borda = roleta) */
+/* WHEEL */
 function renderWheel(p,tg,C,tRaw){
   const n=p.count|0; ensurePool(n);
   const R=p.ringRadius, sz=p.thumbSize;
@@ -269,7 +324,7 @@ function renderWheel(p,tg,C,tRaw){
     const ang=(i*360/n + turned)*Math.PI/180;
     const x=Math.sin(ang)*R + p.offsetX*2;
     const y=-Math.cos(ang)*R + p.offsetY*2;
-    const front=(-Math.cos(ang)+1)/2;                         // 0 fundo .. 1 topo(foco)
+    const front=(-Math.cos(ang)+1)/2;
     const big=tg.bigImage==="on"?(1+smooth(front)*0.7):1;
     const spin=tg.spinThumbs==="on"?0:(i*360/n + turned);
     el.style.width=el.style.height=sz+"px";
@@ -278,14 +333,13 @@ function renderWheel(p,tg,C,tRaw){
     el.style.transform=`translate(-50%,-50%) translate(${x}px,${y}px) rotate(${spin}deg) scale(${big})`;
   }
 }
-
 const SCENES={stack:renderStack,slide:renderSlide,wheel:renderWheel};
 
 /* =====================================================================
-   STATE + UI
+   STATE + UI (shell estilo Arqé)
    ===================================================================== */
 let state={key:"stack01",p:{},t:{},curve:CURVES.Smooth.slice(),curveName:"Smooth",
-  time:0,playing:true,loop:true,dur:2.6};
+  time:0,playing:true,loop:true,dur:8};
 const stage=document.getElementById("stage");
 let pool=[];
 function ensurePool(n){
@@ -295,127 +349,200 @@ function ensurePool(n){
 function defP(sections){const o={};for(const s of sections)for(const k in s.params)o[k]=s.params[k][2];return o;}
 function defT(t){const o={};for(const k in t)o[k]=t[k].def;return o;}
 function render(){const t=REGISTRY[state.key];SCENES[t.scene](state.p,state.t,state.curve,state.time/state.dur);}
+const fmt=v=>Math.abs(v)>=100?Math.round(v):Math.round(v*100)/100;
 
-function buildSidebar(){
-  const sb=document.getElementById("sidebar");
+/* ---- SVG glyph da curva de easing (24x16) ---- */
+function easingGlyph(c){
+  const X=x=>(2+x*20).toFixed(1), Y=y=>(14-y*12).toFixed(1);
+  const d=`M2.0,14.0 C ${X(c[0])},${Y(c[1])} ${X(c[2])},${Y(c[3])} 22.0,2.0`;
+  return `<svg class="easing-glyph" width="24" height="16" viewBox="0 0 24 16" fill="none">
+    <path d="${d}" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>`;
+}
+
+/* ---- GALLERY (tiles com preview webm) ---- */
+function buildGallery(filter){
+  const g=document.getElementById("gallery"); g.innerHTML="";
+  filter=(filter||"").toLowerCase();
+  // categorias reais (built)
+  const cats=[];
+  let cur=null;
   for(const key in REGISTRY){
     const e=REGISTRY[key];
-    if(e.separator){const g=document.createElement("div");g.className="group";g.textContent=e.label;sb.appendChild(g);continue;}
-    const d=document.createElement("div");d.className="tpl"+(key===state.key?" active":"");
-    d.dataset.key=key;
-    d.innerHTML=`<span class="dot"></span>${e.label}`;
-    d.onclick=()=>selectTemplate(key);
-    sb.appendChild(d);
+    if(e.separator){cur={name:e.label,items:[]};cats.push(cur);}
+    else cur.items.push({key,...e});
   }
-  const g=document.createElement("div");g.className="group";g.textContent="Próximos (não construídos)";sb.appendChild(g);
-  COMING.forEach(name=>{const d=document.createElement("div");d.className="tpl soon";
-    d.innerHTML=`<span class="dot"></span>${name}`;sb.appendChild(d);});
+  cats.forEach(cat=>{
+    const items=cat.items.filter(it=>it.label.toLowerCase().includes(filter));
+    if(!items.length)return;
+    const box=document.createElement("div");box.className="cat";
+    const row=document.createElement("div");row.className="cat-row";
+    row.innerHTML=`<span class="chev">▶</span>${cat.name}`;
+    row.onclick=()=>box.classList.toggle("collapsed");
+    const grid=document.createElement("div");grid.className="grid";
+    items.forEach(it=>{
+      const tile=document.createElement("button");
+      tile.className="tile"+(it.key===state.key?" active":"");tile.dataset.key=it.key;
+      tile.innerHTML=`<video class="thumb" src="${it.preview}" muted loop autoplay playsinline></video>
+        <span class="tname">${it.label}</span>`;
+      tile.onclick=()=>selectTemplate(it.key);
+      grid.appendChild(tile);
+    });
+    box.appendChild(row);box.appendChild(grid);g.appendChild(box);
+  });
+  // coming soon
+  const coming=COMING.filter(nm=>nm.toLowerCase().includes(filter));
+  if(coming.length){
+    const box=document.createElement("div");box.className="cat";
+    const row=document.createElement("div");row.className="cat-row";
+    row.innerHTML=`<span class="chev">▶</span>Em breve`;
+    row.onclick=()=>box.classList.toggle("collapsed");
+    const grid=document.createElement("div");grid.className="grid";
+    coming.forEach((nm,i)=>{
+      const tile=document.createElement("button");tile.className="tile soon";
+      tile.innerHTML=`<video class="thumb" src="${PREVIEWS[(i+3)%PREVIEWS.length]}" muted loop autoplay playsinline></video>
+        <span class="tname">${nm}</span>`;
+      grid.appendChild(tile);
+    });
+    box.appendChild(row);box.appendChild(grid);g.appendChild(box);
+  }
 }
+
+/* ---- CONTROLS ---- */
 function selectTemplate(key){
   state.key=key; const t=REGISTRY[key];
   state.p=defP(t.sections); state.t=defT(t.toggles||{});
   state.curve=t.curve.slice(); state.curveName=t.curveName;
   state.time=0; state.dur=state.p.duration||3;
-  document.querySelectorAll(".tpl").forEach(el=>el.classList.toggle("active",el.dataset.key===key));
-  document.getElementById("stagelabel").textContent=t.label+"  ·  "+t.scene+"  ·  ease: "+state.curveName;
-  buildParams(); buildTicks();
+  document.querySelectorAll(".tile").forEach(el=>el.classList.toggle("active",el.dataset.key===key));
+  document.getElementById("stagelabel").textContent=t.label+"  ·  "+t.scene;
+  buildControls(); buildRuler();
 }
-function drawCurve(cv,c){
-  const ctx=cv.getContext("2d"),W=cv.width=56,H=cv.height=56;
-  ctx.clearRect(0,0,W,H);ctx.strokeStyle="#3a3f46";ctx.strokeRect(.5,.5,W-1,H-1);
-  ctx.strokeStyle="#ffb020";ctx.lineWidth=2;ctx.beginPath();
-  for(let i=0;i<=40;i++){const x=i/40,y=bezier(x,c);const px=4+x*(W-8),py=H-4-y*(H-8);i?ctx.lineTo(px,py):ctx.moveTo(px,py);}
-  ctx.stroke();
-}
-/* factory: 1 slider isolado. k/min/max/step viram parâmetros da função,
-   então cada closure tem seu próprio escopo — nunca vaza nem reseta. */
 function makeSlider(k,min,max,step){
-  const row=document.createElement("div");row.className="row";
+  const ctrl=document.createElement("div");ctrl.className="ctrl";
   const lab=document.createElement("label");
   const nm=document.createElement("span");nm.textContent=k;
-  const val=document.createElement("b");val.textContent=fmt(state.p[k]);
+  const val=document.createElement("span");val.className="val";val.textContent=fmt(state.p[k]);
   lab.appendChild(nm);lab.appendChild(val);
-  const inp=document.createElement("input");
-  inp.type="range";inp.min=min;inp.max=max;inp.step=step;inp.value=state.p[k];
-  inp.addEventListener("input",()=>{
-    const v=parseFloat(inp.value);
-    state.p[k]=v; val.textContent=fmt(v);
-    if(k==="duration"){state.dur=v;buildTicks();}
-  });
-  row.appendChild(lab);row.appendChild(inp);
-  return row;
+  const track=document.createElement("div");track.className="ctrl-track";
+  const fill=document.createElement("div");fill.className="ctrl-fill";
+  const handle=document.createElement("div");handle.className="ctrl-handle";
+  track.appendChild(fill);track.appendChild(handle);
+  const paint=()=>{
+    const f=(state.p[k]-min)/(max-min);
+    const pad=7, w=track.clientWidth||220;
+    const hx=pad+f*(w-2*pad);
+    handle.style.left=hx+"px"; fill.style.width=hx+"px";
+    val.textContent=fmt(state.p[k]);
+  };
+  const setFromX=cx=>{
+    const r=track.getBoundingClientRect(), pad=7;
+    let f=(cx-r.left-pad)/(r.width-2*pad); f=clamp(f,0,1);
+    let v=min+f*(max-min); v=Math.round(v/step)*step; v=clamp(v,min,max);
+    state.p[k]=v; if(k==="duration"){state.dur=v;buildRuler();} paint();
+  };
+  let drag=false;
+  track.addEventListener("pointerdown",e=>{drag=true;track.setPointerCapture(e.pointerId);setFromX(e.clientX);});
+  track.addEventListener("pointermove",e=>{if(drag)setFromX(e.clientX);});
+  track.addEventListener("pointerup",()=>drag=false);
+  // scrub no número
+  let sv=0,svx=0;
+  val.addEventListener("pointerdown",e=>{sv=1;svx=e.clientX;val.setPointerCapture(e.pointerId);e.stopPropagation();});
+  val.addEventListener("pointermove",e=>{if(!sv)return;const dx=e.clientX-svx;svx=e.clientX;
+    let v=state.p[k]+dx*step*(max-min>50?1:0.2);v=Math.round(v/step)*step;v=clamp(v,min,max);
+    state.p[k]=v;if(k==="duration"){state.dur=v;buildRuler();}paint();});
+  val.addEventListener("pointerup",()=>sv=0);
+  ctrl.appendChild(lab);ctrl.appendChild(track);
+  requestAnimationFrame(paint);
+  return ctrl;
 }
 function makeToggle(k,options){
-  const row=document.createElement("div");row.className="row";
-  const lab=document.createElement("label");lab.textContent=k;
-  const sel=document.createElement("select");
-  options.forEach(o=>{const op=document.createElement("option");op.value=op.textContent=o;
-    if(o===state.t[k])op.selected=true;sel.appendChild(op);});
-  sel.addEventListener("change",()=>{state.t[k]=sel.value;});
-  row.appendChild(lab);row.appendChild(sel);
-  return row;
+  const ctrl=document.createElement("div");ctrl.className="ctrl";
+  const lab=document.createElement("label");lab.innerHTML=`<span>${k}</span>`;
+  const wrap=document.createElement("div");wrap.className="tog-wrap";
+  const pill=document.createElement("div");pill.className="tog-pill";wrap.appendChild(pill);
+  const btns=[];
+  options.forEach(o=>{
+    const b=document.createElement("button");b.className="tog-btn"+(o===state.t[k]?" active":"");
+    b.textContent=o.charAt(0).toUpperCase()+o.slice(1);
+    b.onclick=()=>{state.t[k]=o;btns.forEach(x=>x.classList.remove("active"));b.classList.add("active");movePill();};
+    wrap.appendChild(b);btns.push(b);
+  });
+  const movePill=()=>{const a=wrap.querySelector(".tog-btn.active");if(!a)return;
+    pill.style.width=a.offsetWidth+"px";pill.style.transform=`translateX(${a.offsetLeft}px)`;};
+  ctrl.appendChild(lab);ctrl.appendChild(wrap);
+  requestAnimationFrame(movePill);
+  return ctrl;
 }
-function buildParams(){
-  const t=REGISTRY[state.key], panel=document.getElementById("paramPanel");
+function buildControls(){
+  const t=REGISTRY[state.key], panel=document.getElementById("controls");
   panel.innerHTML="";
-  // easing picker (o controle do dinamismo)
-  const eh=document.createElement("h3");eh.textContent="Easing (curva de velocidade)";panel.appendChild(eh);
-  const box=document.createElement("div");box.className="easebox";
-  const cv=document.createElement("canvas");cv.className="ease";box.appendChild(cv);
-  const sel=document.createElement("select");
-  Object.keys(CURVES).forEach(name=>{const o=document.createElement("option");o.value=o.textContent=name;
-    if(name===state.curveName)o.selected=true;sel.appendChild(o);});
-  sel.onchange=()=>{state.curveName=sel.value;state.curve=CURVES[sel.value].slice();drawCurve(cv,state.curve);
-    document.getElementById("stagelabel").textContent=t.label+"  ·  "+t.scene+"  ·  ease: "+state.curveName;};
-  box.appendChild(sel);panel.appendChild(box);drawCurve(cv,state.curve);
-  // params — cada slider isolado numa factory (closure garantida)
+  // Easing
+  const eh=document.createElement("div");eh.className="sec-title";eh.textContent="Easing";panel.appendChild(eh);
+  const list=document.createElement("div");list.className="easing-list";
+  Object.keys(CURVES).forEach(name=>{
+    const b=document.createElement("button");b.className="easing-opt"+(name===state.curveName?" active":"");
+    b.innerHTML=`<span>${name}</span>${easingGlyph(CURVES[name])}`;
+    b.onclick=()=>{state.curveName=name;state.curve=CURVES[name].slice();
+      list.querySelectorAll(".easing-opt").forEach(x=>x.classList.remove("active"));b.classList.add("active");};
+    list.appendChild(b);
+  });
+  panel.appendChild(list);
+  // sections
   t.sections.forEach(sec=>{
-    const h=document.createElement("h3");h.textContent=sec.title;panel.appendChild(h);
-    for(const k in sec.params){
-      const spec=sec.params[k];
-      panel.appendChild(makeSlider(k,spec[0],spec[1],spec[3]||1));
-    }
+    const h=document.createElement("div");h.className="sec-title";h.textContent=sec.title;panel.appendChild(h);
+    for(const k in sec.params){const sp=sec.params[k];panel.appendChild(makeSlider(k,sp[0],sp[1],sp[3]||1));}
   });
   if(t.toggles&&Object.keys(t.toggles).length){
-    const h=document.createElement("h3");h.textContent="Toggles";panel.appendChild(h);
-    for(const k in t.toggles){
-      panel.appendChild(makeToggle(k,t.toggles[k].options));
-    }
+    const h=document.createElement("div");h.className="sec-title";h.textContent="Toggles";panel.appendChild(h);
+    for(const k in t.toggles)panel.appendChild(makeToggle(k,t.toggles[k].options));
   }
-  const rb=document.createElement("button");rb.className="btn reset";rb.textContent="↺ Reset";
-  rb.onclick=()=>selectTemplate(state.key);panel.appendChild(rb);
   const hint=document.createElement("div");hint.className="hint";
-  hint.textContent="Troque a curva de easing e veja a velocidade mudar (arranca/assenta). Stack tem anticipation + queda; Carousel e Wheel avançam 1 passo por ciclo com easing.";
+  hint.textContent="Arraste os sliders ou o número. Escolha a curva de easing. Timeline embaixo faz scrub/loop.";
   panel.appendChild(hint);
 }
-const fmt=v=>Math.abs(v)>=100?Math.round(v):Math.round(v*100)/100;
-function buildTicks(){const ticks=document.getElementById("ticks");ticks.innerHTML="";
-  const n=Math.min(20,Math.max(4,Math.round(state.dur)));for(let i=0;i<n;i++)ticks.appendChild(document.createElement("i"));}
 
+/* ---- timeline ruler ---- */
+function buildRuler(){
+  const r=document.getElementById("ruler");r.innerHTML="";
+  const n=16;
+  for(let i=1;i<n;i++){if(i%4===0)continue;const d=document.createElement("span");
+    d.className="tl-ruler-dot";d.style.left=(i/n*100)+"%";r.appendChild(d);}
+}
+
+/* ---- transport / top toggle ---- */
 const playBtn=document.getElementById("playBtn"),loopBtn=document.getElementById("loopBtn");
-playBtn.onclick=()=>{state.playing=!state.playing;playBtn.textContent=state.playing?"⏸ Pause":"▶ Play";};
-loopBtn.onclick=()=>{state.loop=!state.loop;loopBtn.textContent="⟳ Loop: "+(state.loop?"on":"off");};
+playBtn.onclick=()=>{state.playing=!state.playing;playBtn.textContent=state.playing?"❚❚":"▶";playBtn.classList.toggle("play",true);};
+loopBtn.onclick=()=>{state.loop=!state.loop;loopBtn.classList.toggle("on",state.loop);};
 const track=document.getElementById("track");
-function scrub(e){const r=track.getBoundingClientRect();state.time=clamp((e.clientX-r.left)/r.width,0,1)*state.dur;}
-let dragging=false;
-track.onmousedown=e=>{dragging=true;scrub(e);};
-window.onmousemove=e=>{if(dragging)scrub(e);};
-window.onmouseup=()=>dragging=false;
+function scrub(cx){const r=track.getBoundingClientRect();state.time=clamp((cx-r.left)/r.width,0,1)*state.dur;}
+let tdrag=false;
+track.addEventListener("pointerdown",e=>{tdrag=true;track.setPointerCapture(e.pointerId);scrub(e.clientX);});
+track.addEventListener("pointermove",e=>{if(tdrag)scrub(e.clientX);});
+track.addEventListener("pointerup",()=>tdrag=false);
+// top Templates/Custom pill
+(function(){const w=document.getElementById("srcTog"),pill=document.getElementById("srcPill");
+  const btns=w.querySelectorAll(".tog-btn");
+  const move=()=>{const a=w.querySelector(".tog-btn.active");pill.style.width=a.offsetWidth+"px";pill.style.transform=`translateX(${a.offsetLeft}px)`;};
+  btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>x.classList.remove("active"));b.classList.add("active");move();});
+  requestAnimationFrame(move);
+})();
+document.getElementById("search").addEventListener("input",e=>buildGallery(e.target.value));
 
+/* ---- main loop ---- */
 let last=performance.now(),fpsAcc=0,fpsN=0;
 function frame(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
   fpsAcc+=1/dt;fpsN++;
   if(fpsN>=20){document.getElementById("fps").textContent=Math.round(fpsAcc/fpsN)+" fps";fpsAcc=fpsN=0;}
   if(state.playing){state.time+=dt;
-    if(state.time>=state.dur){if(state.loop)state.time%=state.dur;else{state.time=state.dur;state.playing=false;playBtn.textContent="▶ Play";}}}
+    if(state.time>=state.dur){if(state.loop)state.time%=state.dur;else{state.time=state.dur;state.playing=false;playBtn.textContent="▶";}}}
   const pct=(state.time/state.dur)*100;
   document.getElementById("fill").style.width=pct+"%";
   document.getElementById("playhead").style.left=pct+"%";
-  document.getElementById("timeLabel").textContent=state.time.toFixed(2)+"s / "+state.dur.toFixed(2)+"s";
+  document.getElementById("timeLabel").textContent=state.time.toFixed(2)+" / "+state.dur.toFixed(2)+"s";
   render();requestAnimationFrame(frame);
 }
-buildSidebar();selectTemplate("stack01");requestAnimationFrame(frame);
+buildGallery("");selectTemplate("stack01");requestAnimationFrame(frame);
 </script>
 </body>
 </html>
